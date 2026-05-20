@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'auth_service.dart';
 import 'sepet_page.dart'; 
 
 class OdemePage extends StatelessWidget {
@@ -8,6 +10,9 @@ class OdemePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AuthService _authService = AuthService();
+    final SupabaseClient _supabase = Supabase.instance.client;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -62,7 +67,7 @@ class OdemePage extends StatelessWidget {
             TextField(
               decoration: InputDecoration(
                 labelText: "Kart Numarası",
-                hintText: "0000 0000 0000 0000", // basınca gelcek
+                hintText: "0000 0000 0000 0000",
                 prefixIcon: const Icon(Icons.credit_card),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -79,7 +84,7 @@ class OdemePage extends StatelessWidget {
                   child: TextField(
                     decoration: InputDecoration(
                       labelText: "Son Kullanma",
-                      hintText: "AA/YY", // basınca gelcek
+                      hintText: "AA/YY",
                       prefixIcon: const Icon(Icons.date_range),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -92,13 +97,13 @@ class OdemePage extends StatelessWidget {
                   child: TextField(
                     decoration: InputDecoration(
                       labelText: "CVV",
-                      hintText: "123", // basınca gelcek
+                      hintText: "123",
                       prefixIcon: const Icon(Icons.security),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    obscureText: true, // CVV'yi gizler
+                    obscureText: true,
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -131,8 +136,31 @@ class OdemePage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () {
-                  // 1. Ekrana başarılı mesajı ver
+                onPressed: () async {
+                  // --- SIPARISI VERITABANINA KAYDET ---
+                  final userId = _authService.currentUserId;
+
+                  if (userId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("⚠️ Siparişi kaydetmek için lütfen giriş yapın!"),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  } else {
+                    try {
+                      // Supabase 'orders' tablosuna ekle
+                      await _supabase.from('orders').insert({
+                        'user_id': userId,
+                        'toplam_tutar': toplamTutar,
+                      });
+                      print("Sipariş başarıyla kaydedildi.");
+                    } catch (e) {
+                      print("Sipariş kaydetme hatası: $e");
+                    }
+                  }
+
+                  // --- Ekrana başarılı mesajı ver ---
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text("✅ Ödeme Başarılı! Siparişiniz alındı."),
@@ -141,10 +169,8 @@ class OdemePage extends StatelessWidget {
                     ),
                   );
 
-                  // 2. Sepeti tamamen boşalt
+                  // Sepeti temizle ve ana sayfaya git
                   SepetHafizasi.urunler.clear();
-
-                  // 3. Kullanıcıyı en baştaki ana sayfaya fırlat
                   Navigator.pushNamedAndRemoveUntil(
                     context,
                     '/home',
